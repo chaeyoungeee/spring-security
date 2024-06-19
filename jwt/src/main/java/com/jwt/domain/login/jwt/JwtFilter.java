@@ -3,6 +3,7 @@ package com.jwt.domain.login.jwt;
 import com.jwt.domain.login.dto.TokenValidationResult;
 import com.jwt.domain.login.jwt.token.TokenProvider;
 import com.jwt.domain.login.jwt.token.TokenStatus;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +27,7 @@ public class JwtFilter extends OncePerRequestFilter {
     public static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_REGEX = "Bearer ([a-zA-Z0-9_\\-\\+\\/=]+)\\.([a-zA-Z0-9_\\-\\+\\/=]+)\\.([a-zA-Z0-9_.\\-\\+\\/=]*)";
     private static final Pattern BEARER_PATTERN = Pattern.compile(BEARER_REGEX);
+
     private final TokenProvider tokenProvider;
 
     @Override
@@ -47,13 +49,28 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 토큰이 블랙리스트인 경우
+        if (tokenProvider.isAccessTokenBlackList(token)) {
+            handleBlackListedToken(request, response, filterChain);
+            return;
+        }
+
+
         // 정상적인 토큰인 경우 SecurityContext에 Authentication 설정
-        handleValidToken(token, tokenValidationResult);
+        handleValidToken(token, tokenValidationResult.getClaims());
         filterChain.doFilter(request, response);
     }
 
-    private void handleValidToken(String token, TokenValidationResult tokenValidationResult) {
-        Authentication authentication = tokenProvider.getAuthentication(token, tokenValidationResult.getClaims());
+    private void handleBlackListedToken(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
+        request.setAttribute("result",
+                new TokenValidationResult(TokenStatus.TOKEN_IS_BLACKLIST, null, null, null)
+        );
+        filterChain.doFilter(request, response);
+    }
+
+
+    private void handleValidToken(String token, Claims claims) {
+        Authentication authentication = tokenProvider.getAuthentication(token, claims);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         log.info("AUTH SUCCESS : {}", authentication.getName());
     }

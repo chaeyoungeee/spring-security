@@ -1,6 +1,7 @@
 package com.jwt.domain.login;
 
 import com.jwt.domain.login.dto.TokenInfo;
+import com.jwt.domain.login.jwt.blacklist.AccessTokenBlackList;
 import com.jwt.domain.login.jwt.token.TokenProvider;
 import com.jwt.domain.member.Member;
 import com.jwt.domain.member.MemberRepository;
@@ -26,6 +27,7 @@ public class LoginService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
+    private final AccessTokenBlackList accessTokenBlackList;
 
     public Member createMember(MemberCreateDto memberCreateDto) {
         checkPasswordStrength(memberCreateDto.getPassword());
@@ -82,6 +84,10 @@ public class LoginService {
             log.info("일치하지 않는 비밀번호");
             throw new BadCredentialsException("기존 비밀번호 확인에 실패했습니다.");
         }
+    }
+
+    public void logout(String accessToken, String email) {
+        accessTokenBlackList.setBlackList(accessToken, email);
     }
 
 }

@@ -2,6 +2,7 @@ package com.jwt.domain.login.jwt.token;
 
 import com.jwt.domain.login.dto.TokenInfo;
 import com.jwt.domain.login.dto.TokenValidationResult;
+import com.jwt.domain.login.jwt.blacklist.AccessTokenBlackList;
 import com.jwt.domain.member.Member;
 import com.jwt.domain.member.UserPrinciple;
 import io.jsonwebtoken.*;
@@ -25,11 +26,13 @@ public class TokenProvider { //토큰 생성 및 검증
 
     private final Key hashKey;
     private final long accessTokenValidationInMilliseconds;
+    private final AccessTokenBlackList accessTokenBlackList;
 
-    public TokenProvider(String secrete, long accessTokenValidationInSeconds) {
+    public TokenProvider(String secrete, long accessTokenValidationInSeconds, AccessTokenBlackList accessTokenBlackList) {
         byte[] keyBytes = Decoders.BASE64.decode(secrete);
         this.hashKey = Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenValidationInMilliseconds = accessTokenValidationInSeconds * 1000; //초단위로 넘겨줘야하기 때문에 => 밀리초 * 1000
+        this.accessTokenBlackList = accessTokenBlackList;
     }
 
     //토큰 생성
@@ -96,4 +99,14 @@ public class TokenProvider { //토큰 생성 및 검증
 
         return new UsernamePasswordAuthenticationToken(principle, token, authorities);
     }
+
+    public boolean isAccessTokenBlackList(String accessToken) {
+        if(accessTokenBlackList.isTokenBlackList(accessToken)) {
+            log.info("BlackListed Access Token");
+            return true;
+        }
+
+        return false;
+    }
+
 }
